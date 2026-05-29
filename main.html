@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Departure Board</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        /* 駅の電光掲示板（LED）の世界観を構築 */
+        body { 
+            background-color: #000000; 
+            color: #ff9f00; 
+            font-family: 'Share Tech Mono', monospace; 
+            padding: 16px;
+        }
+        .led-panel { 
+            border: 2px solid #222; 
+            box-shadow: 0 0 15px rgba(255, 159, 0, 0.15); 
+            background-color: #080808;
+        }
+        /* 現在進行中のタスクの点滅アニメーション */
+        .active-task { 
+            color: #ffffff !important; 
+            text-shadow: 0 0 8px #ffffff, 0 0 15px #ff9f00;
+            animation: led-blink 1.5s infinite; 
+        }
+        /* 終了したタスクのグレーアウト */
+        .past-task { 
+            color: #222222 !important; 
+            text-shadow: none !important;
+        }
+        @keyframes led-blink { 
+            0%, 100% { opacity: 1; } 
+            50% { opacity: 0.4; } 
+        }
+        /* フォームのiPhoneデフォルトスタイルの打ち消し */
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(62%) sepia(98%) saturate(1514%) hue-rotate(1deg) brightness(103%) contrast(105%);
+        }
+    </style>
+</head>
+<body class="flex flex-col justify-between min-h-[92vh] max-w-md mx-auto">
+
+    <div>
+        <div class="led-panel p-4 rounded-xl text-center mb-4">
+            <div class="text-[10px] tracking-widest text-zinc-600 font-bold mb-1">CURRENT TIME</div>
+            <div id="clock" class="text-4xl font-bold tracking-wider text-orange-500 mb-3">00:00:00</div>
+            
+            <div class="border-t border-zinc-900 my-2"></div>
+            
+            <div class="text-[10px] tracking-widest text-zinc-600 font-bold mb-1">TIME TO DEPARTURE</div>
+            <div id="countdown" class="text-4xl font-bold tracking-wider text-orange-500">--:--:--</div>
+        </div>
+
+        <div class="led-panel p-3 rounded-xl flex gap-3 items-center mb-4">
+            <span class="text-xs font-bold text-zinc-500 tracking-wider">設定発車時刻:</span>
+            <input type="time" id="deptTime" class="flex-1 bg-zinc-
