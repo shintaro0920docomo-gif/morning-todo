@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
-        /* 駅の電光掲示板（LED）の世界観を構築 */
         body { 
             background-color: #000000; 
             color: #ff9f00; 
@@ -19,13 +18,11 @@
             box-shadow: 0 0 15px rgba(255, 159, 0, 0.15); 
             background-color: #080808;
         }
-        /* 現在進行中のタスクの点滅アニメーション */
         .active-task { 
             color: #ffffff !important; 
             text-shadow: 0 0 8px #ffffff, 0 0 15px #ff9f00;
             animation: led-blink 1.5s infinite; 
         }
-        /* 終了したタスクのグレーアウト */
         .past-task { 
             color: #222222 !important; 
             text-shadow: none !important;
@@ -34,9 +31,11 @@
             0%, 100% { opacity: 1; } 
             50% { opacity: 0.4; } 
         }
-        /* フォームのiPhoneデフォルトスタイルの打ち消し */
-        input[type="time"]::-webkit-calendar-picker-indicator {
-            filter: invert(62%) sepia(98%) saturate(1514%) hue-rotate(1deg) brightness(103%) contrast(105%);
+        /* iPhoneで入力フォームが潰れるのを防ぐ設定 */
+        input[type="time"] {
+            -webkit-appearance: none;
+            appearance: none;
+            color-scheme: dark; /* これでiPhoneの時計入力が正常化します */
         }
     </style>
 </head>
@@ -50,9 +49,130 @@
             <div class="border-t border-zinc-900 my-2"></div>
             
             <div class="text-[10px] tracking-widest text-zinc-600 font-bold mb-1">TIME TO DEPARTURE</div>
-            <div id="countdown" class="text-4xl font-bold tracking-wider text-orange-500">--:--:--</div>
+            <div id="countdown" class="text-4xl font-bold tracking-wider text-orange-500">00:00:00</div>
         </div>
 
         <div class="led-panel p-3 rounded-xl flex gap-3 items-center mb-4">
             <span class="text-xs font-bold text-zinc-500 tracking-wider">設定発車時刻:</span>
-            <input type="time" id="deptTime" class="flex-1 bg-zinc-
+            <input type="time" id="deptTime" class="flex-1 bg-zinc-900 border border-zinc-700 p-1.5 rounded text-orange-500 text-center font-bold text-lg focus:outline-none">
+            <button onclick="saveTime()" class="bg-orange-500 text-black text-xs font-bold px-4 py-2 rounded active:scale-95 transition-all">SET</button>
+        </div>
+
+        <div class="led-panel p-4 rounded-xl space-y-2.5">
+            <div class="flex text-[10px] font-bold text-zinc-600 border-b border-zinc-900 pb-1.5">
+                <div class="w-16">TIME</div>
+                <div class="flex-1">ROUTE / OPERATION SEQUENCE</div>
+            </div>
+            <div id="routine-list" class="space-y-2">
+                </div>
+        </div>
+    </div>
+
+    <div class="text-center text-[9px] text-zinc-700 tracking-widest font-bold uppercase mt-4">
+        Morning Station Master Protocol Ver 2.2
+    </div>
+
+    <script>
+        const routines = [
+            { offset: 60, task: "AppleWatchアラーム", nextOffset: 59 },
+            { offset: 59, task: "起床＋日光", nextOffset: 55 },
+            { offset: 55, task: "抹茶", nextOffset: 50 },
+            { offset: 50, task: "瞑想 (10分)", nextOffset: 40 },
+            { offset: 40, task: "日経新聞 (10分)", nextOffset: 30 },
+            { offset: 30, task: "洗顔・化粧水 (10分)", nextOffset: 20 },
+            { offset: 20, task: "朝食 (10分)", nextOffset: 10 },
+            { offset: 10, task: "読書 (10分)", nextOffset: 0 },
+            { offset: 0,  task: "家出発 (定刻発車)", nextOffset: -10 }
+        ];
+
+        function updateClockAndBoard() {
+            const now = new Date();
+            
+            // 1. 現在時刻の表示（確実に動かす）
+            const hrs = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            const secs = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').innerText = `${hrs}:${mins}:${secs}`;
+
+            // 2. 保存データの取得
+            let savedTime = localStorage.getItem('morning_dept_time');
+            if (!savedTime) {
+                savedTime = "07:00";
+                localStorage.setItem('morning_dept_time', "07:00");
+            }
+
+            const [targetHours, targetMinutes] = savedTime.split(':');
+            const targetTime = new Date();
+            targetTime.setHours(parseInt(targetHours), parseInt(targetMinutes), 0, 0);
+
+            // 3. カウントダウン計算
+            const diff = targetTime - now;
+            if (diff > 0) {
+                const h = Math.floor(diff / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                const s = Math.floor((diff % 60000) / 1000);
+                document.getElementById('countdown').innerText = 
+                    `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            } else {
+                document.getElementById('countdown').innerText = "00:00:00";
+            }
+
+            // 4. リストの描画
+            renderBoard(targetTime, now);
+        }
+
+        function renderBoard(targetTime, now) {
+            const list = document.getElementById('routine-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            routines.forEach(item => {
+                const taskStartTime = new Date(targetTime.getTime() - (item.offset * 60000));
+                const taskEndTime = new Date(targetTime.getTime() - (item.nextOffset * 60000));
+                
+                const timeString = `${String(taskStartTime.getHours()).padStart(2,'0')}:${String(taskStartTime.getMinutes()).padStart(2,'0')}`;
+                
+                const isPast = now >= taskEndTime;
+                const isActive = now >= taskStartTime && now < taskEndTime;
+
+                let statusClass = '';
+                if (isPast) {
+                    statusClass = 'past-task';
+                } else if (isActive) {
+                    statusClass = 'active-task';
+                }
+
+                const row = document.createElement('div');
+                row.className = `flex items-center text-sm font-medium border-b border-zinc-950/50 pb-1.5 ${statusClass}`;
+                row.innerHTML = `
+                    <div class="w-16 tracking-wider font-bold">${timeString}</div>
+                    <div class="flex-1 tracking-wide">${item.task}</div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        function saveTime() {
+            const timeVal = document.getElementById('deptTime').value;
+            if (timeVal) {
+                localStorage.setItem('morning_dept_time', timeVal);
+                updateClockAndBoard();
+            }
+        }
+
+        // 起動処理
+        window.onload = () => {
+            let savedTime = localStorage.getItem('morning_dept_time');
+            if (!savedTime) {
+                savedTime = "07:00";
+                localStorage.setItem('morning_dept_time', "07:00");
+            }
+            document.getElementById('deptTime').value = savedTime;
+            
+            // 1秒ごとに同期
+            setInterval(updateClockAndBoard, 1000);
+            updateClockAndBoard();
+        };
+    </script>
+</body>
+</html>
